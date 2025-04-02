@@ -1,12 +1,32 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Image, Button } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import MapScreen from './screens/MapScreen';
+
+const Stack = createNativeStackNavigator();
+
+function HomeScreen({ navigation }) {
+  return (
+    <View style={styles.container}>
+      <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
+      <Text>'AutoBook' Coming soon...</Text>
+      <View style={{ width: 200 }}>
+        <Button title="See Map" onPress={() => navigation.navigate('Map')} />
+      </View>
+      <StatusBar style="auto" />
+    </View>
+  );
+}
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Map" component={MapScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -16,5 +36,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logo: {
+    width: 900,
+    height: 400,
+    resizeMode: 'contain',
+    marginBottom: 20,
   },
 });
