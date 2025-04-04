@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Image, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MapScreen from './screens/MapScreen';
+import DetailerScreen from './screens/DetailerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Detailer" component={DetailerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
