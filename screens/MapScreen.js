@@ -8,7 +8,7 @@ export default function MapScreen() {
   const [location, setLocation] = useState(null);
   const [region, setRegion] = useState(null);
   // Stores fetched route info per detailer, keyed by detailer.id
-  const [detailersRoutes, setDetailersRoutes] = useState({}); 
+  const [detailersRoutes, setDetailersRoutes] = useState({});
   const navigation = useNavigation();
 
   // OpenRouteService API key (for testing only—secure this in production)
@@ -45,7 +45,7 @@ export default function MapScreen() {
       const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
       const body = {
         coordinates: [
-          [origin.longitude, origin.latitude], // Note: ORS expects [lon, lat]
+          [origin.longitude, origin.latitude], // ORS expects [lon, lat]
           [dest.longitude, dest.latitude],
         ],
       };
@@ -77,9 +77,9 @@ export default function MapScreen() {
   }
 
   /**
-   * When a marker is pressed, fetch the driving route for that detailer if not already fetched.
+   * When a marker is selected, fetch the driving route for that detailer if not already fetched.
    */
-  async function handleMarkerPress(detailer) {
+  async function handleMarkerSelect(detailer) {
     if (!detailersRoutes[detailer.id]) {
       const routeInfo = await getDrivingRoute(
         { latitude: location.latitude, longitude: location.longitude },
@@ -143,7 +143,7 @@ export default function MapScreen() {
               coordinate={{ latitude: detailer.latitude, longitude: detailer.longitude }}
               title={detailer.name}
               pinColor="blue"
-              onPress={() => handleMarkerPress(detailer)}
+              onSelect={() => handleMarkerSelect(detailer)}
             >
               <Callout onPress={() => navigation.navigate("Detailer", { detailer, routeInfo })}>
                 <View style={styles.callout}>

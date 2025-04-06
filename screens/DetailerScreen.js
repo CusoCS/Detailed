@@ -1,5 +1,7 @@
+// screens/DetailerScreen.js
 import React from 'react';
 import { View, Text, StyleSheet, Button, ScrollView } from 'react-native';
+import { auth } from '../firebaseConfig';
 
 export default function DetailerScreen({ route, navigation }) {
   const { detailer } = route.params;
@@ -13,6 +15,20 @@ export default function DetailerScreen({ route, navigation }) {
     "Engine Cleaning"
   ];
 
+  // Check if user is logged in
+  const user = auth.currentUser;
+
+  // Decide button title and behavior based on authentication status
+  const buttonTitle = user ? "Book Now" : "Log in to Book";
+  const handlePress = () => {
+    if (!user) {
+      navigation.navigate('Login'); // Navigate to LoginScreen
+    } else {
+      // Here you can navigate to a booking screen or trigger a booking flow
+      alert("Booking feature coming soon!");
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{detailer.name}</Text>
@@ -23,10 +39,7 @@ export default function DetailerScreen({ route, navigation }) {
         </Text>
       ))}
       <View style={styles.buttonContainer}>
-        <Button title="Book Now" onPress={() => {
-          // Here you can navigate to a booking screen or trigger a booking flow
-          alert("Booking feature coming soon!");
-        }} />
+        <Button title={buttonTitle} onPress={handlePress} />
       </View>
     </ScrollView>
   );
