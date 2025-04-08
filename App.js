@@ -1,4 +1,6 @@
-import { StatusBar } from 'expo-status-bar';
+// App.js
+import React, { useState, useEffect } from 'react';
+import { StatusBar, Alert } from 'react-native';
 import { StyleSheet, Text, View, Image, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,17 +8,55 @@ import MapScreen from './screens/MapScreen';
 import DetailerScreen from './screens/DetailerScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import { auth } from './firebaseConfig';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 
 const Stack = createNativeStackNavigator();
 
 function HomeScreen({ navigation }) {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Listen for auth state changes so the UI updates when user logs in or out.
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Function to log the user out.
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        Alert.alert("Logged out successfully!");
+        // Optional: navigate to the Login page if you want:
+        // navigation.replace('Login');
+      })
+      .catch((error) => {
+        Alert.alert("Error logging out", error.message);
+      });
+  };
+
   return (
     <View style={styles.container}>
       <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
-      <Text>'AutoBook' Coming soon...</Text>
+      <Text>"AutoBook" Coming soon...</Text>
       <View style={{ width: 200 }}>
         <Button title="See Map" onPress={() => navigation.navigate('Map')} />
       </View>
+
+      {currentUser ? (
+        // If the user is logged in, show "Log Out"
+        <View style={{ width: 200, marginTop: 10 }}>
+          <Button title="Log Out" onPress={handleLogout} />
+        </View>
+      ) : (
+        // If no user is logged in, show "Log In"
+        <View style={{ width: 200, marginTop: 10 }}>
+          <Button title="Log In" onPress={() => navigation.navigate('Login')} />
+        </View>
+      )}
+
       <StatusBar style="auto" />
     </View>
   );

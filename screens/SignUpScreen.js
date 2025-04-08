@@ -1,6 +1,6 @@
 // screens/SignUpScreen.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -18,8 +18,17 @@ export default function SignUpScreen({ navigation }) {
     }
     createUserWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-         // User account created, navigate to your main screen
-         navigation.replace('Home'); // or replace with 'MapScreen' based on your navigation setup
+        // Account created – show alert then navigate to the Login page.
+        Alert.alert(
+          "Success",
+          "Account successfully created!",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.replace('Login') // Navigate to LoginScreen
+            }
+          ]
+        );
       })
       .catch((error) => {
          setErrorMessage(error.message);
