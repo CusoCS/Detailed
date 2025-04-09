@@ -1,6 +1,6 @@
 // screens/LoginScreen.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
@@ -13,7 +13,9 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = () => {
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-        // Signed in successfully, navigate to your main screen
+        // Show an alert for a successful login
+        Alert.alert("Logged in successfully!");
+        // Navigate to your main screen
         navigation.replace('Home'); // or 'MapScreen', based on your navigation setup
       })
       .catch((error) => {
@@ -40,10 +42,7 @@ export default function LoginScreen({ navigation }) {
         onChangeText={text => setPassword(text)}
       />
       <Button title="Login" onPress={handleLogin} />
-      <TouchableOpacity 
-        onPress={() => navigation.navigate('SignUp')} 
-        style={styles.signupButton}
-      >
+      <TouchableOpacity onPress={() => navigation.navigate('SignUp')} style={styles.signupButton}>
          <Text style={styles.signupText}>Don't have an account? Sign up</Text>
       </TouchableOpacity>
     </View>

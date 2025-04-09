@@ -7,26 +7,63 @@ import MapScreen from './screens/MapScreen';
 import DetailerScreen from './screens/DetailerScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
-import { auth } from './firebaseConfig';
+import { auth, db } from './firebaseConfig';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
 
 const Stack = createNativeStackNavigator();
 
 const HomeScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  useEffect(() => onAuthStateChanged(auth, setCurrentUser), []);
+  const [isDetailer, setIsDetailer] = useState(false);
 
+  // Listen for authentication state changes so the UI updates when user logs in or out.
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return unsubscribe;
+  }, []);
+
+  // When currentUser changes, fetch the user document to check if they are a detailer.
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (currentUser) {
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            setIsDetailer(data.role === 'detailer');
+          } else {
+            // User doc doesn't exist. Set default role.
+            setIsDetailer(false);
+          }
+        } catch (error) {
+          console.error("Error fetching user role: ", error);
+          setIsDetailer(false);
+        }
+      } else {
+        setIsDetailer(false);
+      }
+    };
+    fetchUserRole();
+  }, [currentUser]);
+
+  // Function to log out the user.
   const handleLogout = () => {
     signOut(auth)
       .then(() => Alert.alert("Logged out successfully!"))
-      .catch(error => Alert.alert("Error logging out", error.message));
+      .catch((error) => Alert.alert("Error logging out", error.message));
   };
 
   return (
     <View style={styles.container}>
       <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
-      <Text>"AutoBook" Coming soon...</Text>
+      <Text>
+        {isDetailer ? "Welcome back, Detailer" : '"AutoBook" Coming soon...'}
+      </Text>
       <View style={styles.btnContainer}>
         <Button title="See Map" onPress={() => navigation.navigate('Map')} />
       </View>
