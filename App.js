@@ -1,6 +1,6 @@
 // App.js
 import React, { useState, useEffect } from 'react';
-import { StatusBar, Alert, StyleSheet, Text, View, Image, Button } from 'react-native';
+import { StyleSheet, View, Image, Button, Alert, StatusBar, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MapScreen from './screens/MapScreen';
@@ -13,54 +13,34 @@ import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
 
 const Stack = createNativeStackNavigator();
 
-function HomeScreen({ navigation }) {
+const HomeScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  useEffect(() => onAuthStateChanged(auth, setCurrentUser), []);
 
-  // Listen for authentication state changes so the UI updates when user logs in or out.
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-    });
-    return unsubscribe;
-  }, []);
-
-  // Function to log out the user.
   const handleLogout = () => {
     signOut(auth)
-      .then(() => {
-        Alert.alert("Logged out successfully!");
-        // Optional: navigate to Login screen if desired:
-        // navigation.replace('Login');
-      })
-      .catch((error) => {
-        Alert.alert("Error logging out", error.message);
-      });
+      .then(() => Alert.alert("Logged out successfully!"))
+      .catch(error => Alert.alert("Error logging out", error.message));
   };
 
   return (
     <View style={styles.container}>
       <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
       <Text>"AutoBook" Coming soon...</Text>
-      <View style={{ width: 200 }}>
+      <View style={styles.btnContainer}>
         <Button title="See Map" onPress={() => navigation.navigate('Map')} />
       </View>
-      
-      {currentUser ? (
-        // If the user is logged in, show "Log Out"
-        <View style={{ width: 200, marginTop: 10 }}>
+      <View style={styles.btnContainer}>
+        {currentUser ? (
           <Button title="Log Out" onPress={handleLogout} />
-        </View>
-      ) : (
-        // If no user is logged in, show "Log In"
-        <View style={{ width: 200, marginTop: 10 }}>
+        ) : (
           <Button title="Log In" onPress={() => navigation.navigate('Login')} />
-        </View>
-      )}
-      
+        )}
+      </View>
       <StatusBar style="auto" />
     </View>
   );
-}
+};
 
 export default function App() {
   return (
@@ -90,5 +70,9 @@ const styles = StyleSheet.create({
     height: 400,
     resizeMode: 'contain',
     marginBottom: 20,
+  },
+  btnContainer: {
+    width: 200,
+    marginTop: 10,
   },
 });

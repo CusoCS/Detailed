@@ -7,78 +7,40 @@ import { useNavigation } from '@react-navigation/native';
 export default function MapScreen() {
   const [location, setLocation] = useState(null);
   const [region, setRegion] = useState(null);
-  // Stores fetched route info per detailer, keyed by detailer.id
   const [detailersRoutes, setDetailersRoutes] = useState({});
   const navigation = useNavigation();
 
-  // OpenRouteService API key (for testing only—secure this in production)
   const ORS_API_KEY = '5b3ce3597851110001cf624889d4c9f563f74d179ec2139f286083ee';
 
-  // Hardcoded list of car detailers
   const detailers = [
-    {
-      id: 1,
-      name: "NSN Auto Detailing",
-      latitude: 53.34098815220173,
-      longitude: -6.541547706782504,
-    },
-    {
-      id: 2,
-      name: "Auto Refined 2020",
-      latitude: 53.3123280819039,
-      longitude: -6.397753731059657,
-    },
-    {
-      id: 3,
-      name: "QuickFix Garage",
-      latitude: 53.355,
-      longitude: -6.265,
-    },
+    { id: 1, name: "NSN Auto Detailing", latitude: 53.34098815220173, longitude: -6.541547706782504 },
+    { id: 2, name: "Auto Refined 2020", latitude: 53.3123280819039,  longitude: -6.397753731059657 },
+    { id: 3, name: "QuickFix Garage",    latitude: 53.355,           longitude: -6.265 },
   ];
 
-  /**
-   * Fetches driving route information from OpenRouteService.
-   * Returns an object with distance (km) and duration (mins).
-   */
   async function getDrivingRoute(origin, dest) {
     try {
-      const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
-      const body = {
-        coordinates: [
-          [origin.longitude, origin.latitude], // ORS expects [lon, lat]
-          [dest.longitude, dest.latitude],
-        ],
-      };
-
-      const response = await fetch(url, {
+      const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': ORS_API_KEY,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ coordinates: [[origin.longitude, origin.latitude], [dest.longitude, dest.latitude]] }),
       });
-
       const data = await response.json();
       if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        // Convert meters to km and seconds to minutes
-        const distanceKm = route.summary.distance / 1000;
-        const durationMins = route.summary.duration / 60;
-        return { distanceKm, durationMins };
-      } else {
-        console.warn('No route found for this detailer');
-        return null;
+        const { distance, duration } = data.routes[0].summary;
+        return { distanceKm: distance / 1000, durationMins: duration / 60 };
       }
+      console.warn('No route found for detailer', dest);
+      return null;
     } catch (error) {
-      console.error('Error fetching route from ORS:', error);
+      console.error('Error fetching route:', error);
       return null;
     }
   }
 
-  /**
-   * When a marker is selected, fetch the driving route for that detailer if not already fetched.
-   */
   async function handleMarkerSelect(detailer) {
     if (!detailersRoutes[detailer.id]) {
       const routeInfo = await getDrivingRoute(
@@ -89,15 +51,14 @@ export default function MapScreen() {
     }
   }
 
-  // Request user's location and set region on component mount.
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access location was denied');
         return;
       }
-      let currentLocation = await Location.getCurrentPositionAsync({});
+      const currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
       setRegion({
         latitude: currentLocation.coords.latitude,
@@ -118,25 +79,16 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView style={styles.map} region={region} showsUserLocation={true}>
-        {/* User's current location marker */}
-        <Marker
-          coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-          title="You're here"
-        />
-
-        {/* Detailers markers */}
-        {detailers.map((detailer) => {
-          // Retrieve route info if already fetched; otherwise show a prompt.
+      <MapView style={styles.map} region={region} showsUserLocation>
+        <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }} title="You're here" />
+        {detailers.map(detailer => {
           const routeInfo = detailersRoutes[detailer.id];
           let distanceText = 'Tap marker to load route';
           let timeText = '';
-
           if (routeInfo && routeInfo.distanceKm != null && routeInfo.durationMins != null) {
             distanceText = `${routeInfo.distanceKm.toFixed(2)} km away`;
             timeText = `${Math.round(routeInfo.durationMins)} mins away`;
           }
-
           return (
             <Marker
               key={detailer.id}
