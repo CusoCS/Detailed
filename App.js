@@ -7,6 +7,9 @@ import MapScreen from './screens/MapScreen';
 import DetailerScreen from './screens/DetailerScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import ManageServicesScreen from './screens/ManageServicesScreen';
+import ManageBookingsScreen from './screens/ManageBookingsScreen';
+import BookingScreen from './screens/BookingScreen';
 import { auth, db } from './firebaseConfig';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -18,7 +21,7 @@ const HomeScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isDetailer, setIsDetailer] = useState(false);
 
-  // Listen for authentication state changes so the UI updates when user logs in or out.
+  // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -26,7 +29,7 @@ const HomeScreen = ({ navigation }) => {
     return unsubscribe;
   }, []);
 
-  // When currentUser changes, fetch the user document to check if they are a detailer.
+  // Check if current user is a detailer (using your Firestore 'users' document)
   useEffect(() => {
     const fetchUserRole = async () => {
       if (currentUser) {
@@ -37,7 +40,6 @@ const HomeScreen = ({ navigation }) => {
             const data = userSnap.data();
             setIsDetailer(data.role === 'detailer');
           } else {
-            // User doc doesn't exist. Set default role.
             setIsDetailer(false);
           }
         } catch (error) {
@@ -51,7 +53,6 @@ const HomeScreen = ({ navigation }) => {
     fetchUserRole();
   }, [currentUser]);
 
-  // Function to log out the user.
   const handleLogout = () => {
     signOut(auth)
       .then(() => Alert.alert("Logged out successfully!"))
@@ -67,6 +68,16 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.btnContainer}>
         <Button title="See Map" onPress={() => navigation.navigate('Map')} />
       </View>
+      {isDetailer && (
+        <>
+          <View style={styles.btnContainer}>
+            <Button title="Manage Services" onPress={() => navigation.navigate('ManageServices')} />
+          </View>
+          <View style={styles.btnContainer}>
+            <Button title="Manage Bookings" onPress={() => navigation.navigate('ManageBookings')} />
+          </View>
+        </>
+      )}
       <View style={styles.btnContainer}>
         {currentUser ? (
           <Button title="Log Out" onPress={handleLogout} />
@@ -89,6 +100,9 @@ export default function App() {
           <Stack.Screen name="Detailer" component={DetailerScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="ManageServices" component={ManageServicesScreen} />
+          <Stack.Screen name="ManageBookings" component={ManageBookingsScreen} />
+          <Stack.Screen name="BookService" component={BookingScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </KeyboardDismissWrapper>
@@ -96,20 +110,12 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   logo: {
     width: 900,
     height: 400,
     resizeMode: 'contain',
     marginBottom: 20,
   },
-  btnContainer: {
-    width: 200,
-    marginTop: 10,
-  },
+  btnContainer: { width: 200, marginTop: 10 },
 });

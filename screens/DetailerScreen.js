@@ -6,7 +6,7 @@ import { auth } from '../firebaseConfig';
 export default function DetailerScreen({ route, navigation }) {
   const { detailer } = route.params;
 
-  // Dummy list of services; later this could come from your backend.
+  // Dummy list of services; later, consider fetching this dynamically from your backend
   const services = [
     "Exterior Car Wash",
     "Interior Cleaning",
@@ -18,14 +18,15 @@ export default function DetailerScreen({ route, navigation }) {
   // Check if user is logged in
   const user = auth.currentUser;
 
-  // Decide button title and behavior based on authentication status
+  // Decide button title and behavior based on authentication status.
+  // If user is logged in, navigate to the booking flow; otherwise, navigate to the Login screen.
   const buttonTitle = user ? "Book Now" : "Log in to Book";
   const handlePress = () => {
     if (!user) {
       navigation.navigate('Login'); // Navigate to LoginScreen
     } else {
-      // Here you can navigate to a booking screen or trigger a booking flow
-      alert("Booking feature coming soon!");
+      // Navigate to the BookingScreen (or "BookService") passing the detailer data
+      navigation.navigate("BookService", { detailer });
     }
   };
 

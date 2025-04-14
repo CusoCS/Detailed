@@ -13,7 +13,7 @@ export default function MapScreen() {
   const ORS_API_KEY = '5b3ce3597851110001cf624889d4c9f563f74d179ec2139f286083ee';
 
   const detailers = [
-    { id: 1, name: "NSN Auto Detailing", latitude: 53.34098815220173, longitude: -6.541547706782504 },
+    { id: 1, uid: 'r2lRZrs0K3QaT8w71vqJyWu5HtC2', name: "NSN Auto Detailing", latitude: 53.34098815220173, longitude: -6.541547706782504 },
     { id: 2, name: "Auto Refined 2020", latitude: 53.3123280819039,  longitude: -6.397753731059657 },
     { id: 3, name: "QuickFix Garage",    latitude: 53.355,           longitude: -6.265 },
   ];
