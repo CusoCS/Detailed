@@ -1,12 +1,21 @@
 // App.js
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image, Button, Alert, StatusBar, Text } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Image,
+  Button,
+  Text,
+  Alert,
+  StatusBar,
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MapScreen from './screens/MapScreen';
 import DetailerScreen from './screens/DetailerScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import CustomerBookingsScreen from './screens/CustomerBookingsScreen';
 import ManageServicesScreen from './screens/ManageServicesScreen';
 import ManageBookingsScreen from './screens/ManageBookingsScreen';
 import BookingScreen from './screens/BookingScreen';
@@ -17,78 +26,86 @@ import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
 
 const Stack = createNativeStackNavigator();
 
-const HomeScreen = ({ navigation }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+function HomeScreen({ navigation }) {
+  const [user, setUser] = useState(null);
   const [isDetailer, setIsDetailer] = useState(false);
 
-  // Listen for authentication state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-    });
-    return unsubscribe;
+    const unsub = onAuthStateChanged(auth, setUser);
+    return unsub;
   }, []);
 
-  // Check if current user is a detailer (using your Firestore 'users' document)
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (currentUser) {
-        try {
-          const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            const data = userSnap.data();
-            setIsDetailer(data.role === 'detailer');
-          } else {
-            setIsDetailer(false);
-          }
-        } catch (error) {
-          console.error("Error fetching user role: ", error);
-          setIsDetailer(false);
-        }
-      } else {
+    if (!user) return setIsDetailer(false);
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        setIsDetailer(snap.exists() && snap.data().role === 'detailer');
+      } catch {
         setIsDetailer(false);
       }
-    };
-    fetchUserRole();
-  }, [currentUser]);
+    })();
+  }, [user]);
 
-  const handleLogout = () => {
+  const logout = () =>
     signOut(auth)
-      .then(() => Alert.alert("Logged out successfully!"))
-      .catch((error) => Alert.alert("Error logging out", error.message));
-  };
+      .then(() => Alert.alert('Logged out successfully!'))
+      .catch(e => Alert.alert('Error', e.message));
 
   return (
     <View style={styles.container}>
-      <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
-      <Text>
-        {isDetailer ? "Welcome back, Detailer" : '"AutoBook" Coming soon...'}
+      <Image
+        source={require('./assets/wiper.jpg')}
+        style={styles.logo}
+      />
+      <Text style={styles.subtitle}>
+        {isDetailer
+          ? 'Welcome back, Detailer'
+          : '"AutoBook" Coming soon...'}
       </Text>
-      <View style={styles.btnContainer}>
+
+      <View style={styles.btn}>
         <Button title="See Map" onPress={() => navigation.navigate('Map')} />
       </View>
+
+      {user && !isDetailer && (
+        <View style={styles.btn}>
+          <Button
+            title="My Bookings"
+            onPress={() => navigation.navigate('CustomerBookings')}
+          />
+        </View>
+      )}
+
       {isDetailer && (
         <>
-          <View style={styles.btnContainer}>
-            <Button title="Manage Services" onPress={() => navigation.navigate('ManageServices')} />
+          <View style={styles.btn}>
+            <Button
+              title="Manage Services"
+              onPress={() => navigation.navigate('ManageServices')}
+            />
           </View>
-          <View style={styles.btnContainer}>
-            <Button title="Manage Bookings" onPress={() => navigation.navigate('ManageBookings')} />
+          <View style={styles.btn}>
+            <Button
+              title="Manage Bookings"
+              onPress={() => navigation.navigate('ManageBookings')}
+            />
           </View>
         </>
       )}
-      <View style={styles.btnContainer}>
-        {currentUser ? (
-          <Button title="Log Out" onPress={handleLogout} />
+
+      <View style={styles.btn}>
+        {user ? (
+          <Button title="Log Out" onPress={logout} />
         ) : (
           <Button title="Log In" onPress={() => navigation.navigate('Login')} />
         )}
       </View>
+
       <StatusBar style="auto" />
     </View>
   );
-};
+}
 
 export default function App() {
   return (
@@ -100,8 +117,19 @@ export default function App() {
           <Stack.Screen name="Detailer" component={DetailerScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="ManageServices" component={ManageServicesScreen} />
-          <Stack.Screen name="ManageBookings" component={ManageBookingsScreen} />
+          <Stack.Screen
+            name="CustomerBookings"
+            component={CustomerBookingsScreen}
+            options={{ title: 'My Bookings' }}
+          />
+          <Stack.Screen
+            name="ManageServices"
+            component={ManageServicesScreen}
+          />
+          <Stack.Screen
+            name="ManageBookings"
+            component={ManageBookingsScreen}
+          />
           <Stack.Screen name="BookService" component={BookingScreen} />
         </Stack.Navigator>
       </NavigationContainer>
@@ -110,12 +138,18 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logo: {
-    width: 900,
-    height: 400,
+    width: 200,
+    height: 100,
     resizeMode: 'contain',
     marginBottom: 20,
   },
-  btnContainer: { width: 200, marginTop: 10 },
+  subtitle: { fontSize: 18, marginBottom: 20 },
+  btn: { width: 200, marginVertical: 6 },
 });

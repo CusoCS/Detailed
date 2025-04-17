@@ -1,6 +1,6 @@
-// screens/BookingScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet, FlatList, TouchableOpacity, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { getServices, addBooking } from '../booking/services';
 import { auth } from '../firebaseConfig';
 
@@ -8,10 +8,10 @@ export default function BookingScreen({ route, navigation }) {
   const { detailer } = route.params;
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
-  const [bookingTime, setBookingTime] = useState('');
+  const [bookingTime, setBookingTime] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
   const currentUser = auth.currentUser;
 
-  // Fetch available services for the selected detailer
   const fetchServices = async () => {
     if (detailer.uid) {
       try {
@@ -31,12 +31,11 @@ export default function BookingScreen({ route, navigation }) {
 
   const handleBookNow = async () => {
     if (!selectedService || !bookingTime) {
-      Alert.alert("Validation", "Please select a service and enter a booking time");
+      Alert.alert("Validation", "Please select a service and booking time");
       return;
     }
     try {
-      // Assume bookingTime is entered in a valid format (e.g. "2025-04-20 14:00").
-      await addBooking(currentUser.uid, detailer.uid, selectedService.serviceName, new Date(bookingTime));
+      await addBooking(currentUser.uid, detailer.uid, selectedService.serviceName, bookingTime);
       Alert.alert("Success", "Booking created successfully");
       navigation.goBack();
     } catch (error) {
@@ -55,9 +54,15 @@ export default function BookingScreen({ route, navigation }) {
     </TouchableOpacity>
   );
 
+  const onChangeDate = (event, selectedDate) => {
+    setShowPicker(false);
+    if (selectedDate) setBookingTime(selectedDate);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Book a Service at {detailer.name}</Text>
+
       <Text style={styles.label}>Select a Service:</Text>
       <FlatList
         data={services}
@@ -65,13 +70,22 @@ export default function BookingScreen({ route, navigation }) {
         renderItem={renderServiceItem}
         ListEmptyComponent={<Text>No services available for booking.</Text>}
       />
-      <Text style={styles.label}>Enter Booking Time:</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="YYYY-MM-DD HH:MM"
-        value={bookingTime}
-        onChangeText={setBookingTime}
-      />
+
+      <Text style={styles.label}>Booking Time:</Text>
+      <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.dateButton}>
+        <Text style={styles.dateText}>{bookingTime.toLocaleString()}</Text>
+      </TouchableOpacity>
+
+      {showPicker && (
+        <DateTimePicker
+          value={bookingTime}
+          mode="datetime"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          onChange={onChangeDate}
+          minimumDate={new Date()}
+        />
+      )}
+
       <Button title="Book Now" onPress={handleBookNow} />
       <Button title="Back" onPress={() => navigation.goBack()} />
     </View>
@@ -82,8 +96,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
   title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   label: { fontSize: 16, marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 5, marginBottom: 20 },
-  serviceItem: { padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 5, marginBottom: 10 },
+  serviceItem: {
+    padding: 10, borderWidth: 1, borderColor: '#ccc', borderRadius: 5, marginBottom: 10
+  },
   selectedItem: { backgroundColor: '#d3d3d3' },
   serviceText: { fontSize: 16 },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 20
+  },
+  dateText: { fontSize: 16 },
 });
