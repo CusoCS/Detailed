@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -19,6 +18,7 @@ import CustomerBookingsScreen from './screens/CustomerBookingsScreen';
 import ManageServicesScreen from './screens/ManageServicesScreen';
 import ManageBookingsScreen from './screens/ManageBookingsScreen';
 import BookingScreen from './screens/BookingScreen';
+import ManageAvailabilityScreen from './screens/ManageAvailabilityScreen';  // ← new
 import { auth, db } from './firebaseConfig';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -50,7 +50,7 @@ function HomeScreen({ navigation }) {
   const logout = () =>
     signOut(auth)
       .then(() => Alert.alert('Logged out successfully!'))
-      .catch(e => Alert.alert('Error', e.message));
+      .catch((e) => Alert.alert('Error', e.message));
 
   return (
     <View style={styles.container}>
@@ -59,9 +59,7 @@ function HomeScreen({ navigation }) {
         style={styles.logo}
       />
       <Text style={styles.subtitle}>
-        {isDetailer
-          ? 'Welcome back, Detailer'
-          : '"AutoBook" Coming soon...'}
+        {isDetailer ? 'Welcome back, Detailer' : '"AutoBook" Coming soon...'}
       </Text>
 
       <View style={styles.btn}>
@@ -89,6 +87,12 @@ function HomeScreen({ navigation }) {
             <Button
               title="Manage Bookings"
               onPress={() => navigation.navigate('ManageBookings')}
+            />
+          </View>
+          <View style={styles.btn}>
+            <Button
+              title="Manage Availability"
+              onPress={() => navigation.navigate('ManageAvailability')}
             />
           </View>
         </>
@@ -129,6 +133,11 @@ export default function App() {
           <Stack.Screen
             name="ManageBookings"
             component={ManageBookingsScreen}
+          />
+          <Stack.Screen
+            name="ManageAvailability"                      // ← new
+            component={ManageAvailabilityScreen}
+            options={{ title: 'Manage Availability' }}
           />
           <Stack.Screen name="BookService" component={BookingScreen} />
         </Stack.Navigator>

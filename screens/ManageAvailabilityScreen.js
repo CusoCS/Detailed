@@ -4,13 +4,12 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   Button,
   Alert,
   StyleSheet,
   Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { auth } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -22,19 +21,16 @@ import {
 export default function ManageAvailabilityScreen() {
   const [user, setUser] = useState(null);
   const [slots, setSlots] = useState([]);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState('date'); // 'date' or 'time'
+  const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // 1) subscribe to auth
+  // 1) wait for auth
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-    });
+    const unsub = onAuthStateChanged(auth, setUser);
     return unsub;
   }, []);
 
-  // 2) fetch as soon as we have a user
+  // 2) load slots once we have a user
   useEffect(() => {
     if (user) fetchSlots();
   }, [user]);
@@ -42,41 +38,20 @@ export default function ManageAvailabilityScreen() {
   async function fetchSlots() {
     try {
       const data = await getHourSlots(user.uid);
-      const sorted = data.sort((a, b) => {
-        const aTime = a.startTime.toDate
-          ? a.startTime.toDate()
-          : new Date(a.startTime);
-        const bTime = b.startTime.toDate
-          ? b.startTime.toDate()
-          : new Date(b.startTime);
-        return aTime - bTime;
-      });
-      setSlots(sorted);
+      setSlots(
+        data.sort((a, b) => {
+          const aT = a.startTime.toDate
+            ? a.startTime.toDate()
+            : new Date(a.startTime);
+          const bT = b.startTime.toDate
+            ? b.startTime.toDate()
+            : new Date(b.startTime);
+          return aT - bT;
+        })
+      );
     } catch (err) {
       console.error('fetchSlots error:', err);
-      Alert.alert('Error fetching slots', err.message);
-    }
-  }
-
-  function showDatePicker() {
-    setPickerMode('date');
-    setShowPicker(true);
-  }
-
-  function onPickDate(event, date) {
-    // close or continue
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-      if (date && pickerMode === 'date') {
-        // after date, ask for time
-        setPickerMode('time');
-        setShowPicker(true);
-      } else if (date) {
-        setSelectedDate(date);
-      }
-    } else {
-      // iOS
-      if (date) setSelectedDate(date);
+      Alert.alert('Error loading slots', err.message);
     }
   }
 
@@ -88,35 +63,42 @@ export default function ManageAvailabilityScreen() {
       await addHourSlot(user.uid, start, end);
       fetchSlots();
     } catch (err) {
-      console.error('addSlot error:', err);
+      console.error('addHourSlot error:', err);
       Alert.alert('Error adding slot', err.message);
     }
   }
 
-  function onDeleteSlot(id) {
-    Alert.alert(
-      'Delete this slot?',
-      undefined,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteHourSlot(id);
-              fetchSlots();
-            } catch (err) {
-              console.error('deleteSlot error:', err);
-              Alert.alert('Error deleting slot', err.message);
-            }
-          },
+  function onDelete(id) {
+    Alert.alert('Delete this slot?', '', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteHourSlot(id);
+            fetchSlots();
+          } catch (err) {
+            console.error('deleteHourSlot error:', err);
+            Alert.alert('Error deleting slot', err.message);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }
 
-  const renderItem = ({ item }) => {
+  function handleConfirm(date) {
+    // only called when you tap "Confirm"/"Done"
+    setPickerVisible(false);
+    setSelectedDate(date);
+  }
+
+  function handleCancel() {
+    // only called when you tap "Cancel"
+    setPickerVisible(false);
+  }
+
+  const renderSlot = ({ item }) => {
     const start = item.startTime.toDate
       ? item.startTime.toDate()
       : new Date(item.startTime);
@@ -133,11 +115,7 @@ export default function ManageAvailabilityScreen() {
           <Text>{item.booked ? 'Booked' : 'Free'}</Text>
         </View>
         {!item.booked && (
-          <Button
-            title="Delete"
-            color="red"
-            onPress={() => onDeleteSlot(item.id)}
-          />
+          <Button title="Delete" color="red" onPress={() => onDelete(item.id)} />
         )}
       </View>
     );
@@ -145,31 +123,30 @@ export default function ManageAvailabilityScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Manage Availability</Text>
+      <Text style={styles.header}>Manage Availability</Text>
 
-      <View style={styles.addSection}>
-        <Button title="Pick Date & Time" onPress={showDatePicker} />
-        <Text style={styles.chosen}>
-          {selectedDate.toLocaleString()}
-        </Text>
+      <View style={styles.controls}>
+        <Button title="Pick Start Time" onPress={() => setPickerVisible(true)} />
+        <Text style={styles.chosen}>{selectedDate.toLocaleString()}</Text>
         <Button title="Add 1‑Hour Slot" onPress={onAddSlot} />
       </View>
 
-      {showPicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode={pickerMode}
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          onChange={onPickDate}
-          minimumDate={new Date()}
-        />
-      )}
+      <DateTimePickerModal
+        isVisible={pickerVisible}
+        mode="datetime"
+        display={Platform.OS === 'ios' ? 'inline' : 'spinner'}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        minimumDate={new Date()}
+        confirmTextIOS="Done"
+        cancelTextIOS="Cancel"
+      />
 
       <FlatList
         data={slots}
         keyExtractor={(i) => i.id}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text>No slots created yet.</Text>}
+        renderItem={renderSlot}
+        ListEmptyComponent={<Text>No slots yet.</Text>}
       />
     </View>
   );
@@ -177,16 +154,12 @@ export default function ManageAvailabilityScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 15 },
-  addSection: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+  controls: { marginBottom: 20, alignItems: 'center' },
   chosen: { marginVertical: 10 },
   slotRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 10,
     borderBottomWidth: 1,
     borderColor: '#ccc',
