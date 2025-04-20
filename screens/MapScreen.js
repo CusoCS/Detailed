@@ -10,33 +10,38 @@ export default function MapScreen() {
   const [detailersRoutes, setDetailersRoutes] = useState({});
   const navigation = useNavigation();
 
-  const ORS_API_KEY = '5b3ce3597851110001cf624889d4c9f563f74d179ec2139f286083ee';
+  const CLOUD_FUNCTION_URL = 'https://getdistancematrix-c6if5upugq-uc.a.run.app';
 
   const detailers = [
     { id: 1, uid: 'r2lRZrs0K3QaT8w71vqJyWu5HtC2', name: "NSN Auto Detailing", latitude: 53.34098815220173, longitude: -6.541547706782504 },
-    { id: 2, name: "Auto Refined 2020", latitude: 53.3123280819039,  longitude: -6.397753731059657 },
-    { id: 3, name: "QuickFix Garage",    latitude: 53.355,           longitude: -6.265 },
+    { id: 2, name: "Auto Refined 2020", latitude: 53.3123280819039, longitude: -6.397753731059657 },
+    { id: 3, name: "QuickFix Garage", latitude: 53.355, longitude: -6.265 },
   ];
 
   async function getDrivingRoute(origin, dest) {
     try {
-      const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+      const resp = await fetch(CLOUD_FUNCTION_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': ORS_API_KEY,
-        },
-        body: JSON.stringify({ coordinates: [[origin.longitude, origin.latitude], [dest.longitude, dest.latitude]] }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: { lat: origin.latitude, lng: origin.longitude },
+          dest: { lat: dest.latitude, lng: dest.longitude }
+        })
       });
-      const data = await response.json();
-      if (data.routes && data.routes.length > 0) {
-        const { distance, duration } = data.routes[0].summary;
-        return { distanceKm: distance / 1000, durationMins: duration / 60 };
+
+      const json = await resp.json();
+
+      if (!resp.ok) {
+        console.error('Cloud Function Error:', json);
+        return null;
       }
-      console.warn('No route found for detailer', dest);
-      return null;
+
+      return {
+        distanceKm: json.distanceKm,
+        durationMins: json.durationMins,
+      };
     } catch (error) {
-      console.error('Error fetching route:', error);
+      console.error('Error fetching distance:', error);
       return null;
     }
   }
@@ -80,12 +85,15 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <MapView style={styles.map} region={region} showsUserLocation>
-        <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }} title="You're here" />
+        <Marker
+          coordinate={{ latitude: location.latitude, longitude: location.longitude }}
+          title="You're here"
+        />
         {detailers.map(detailer => {
           const routeInfo = detailersRoutes[detailer.id];
           let distanceText = 'Tap marker to load route';
           let timeText = '';
-          if (routeInfo && routeInfo.distanceKm != null && routeInfo.durationMins != null) {
+          if (routeInfo?.distanceKm != null && routeInfo?.durationMins != null) {
             distanceText = `${routeInfo.distanceKm.toFixed(2)} km away`;
             timeText = `${Math.round(routeInfo.durationMins)} mins away`;
           }
@@ -95,7 +103,7 @@ export default function MapScreen() {
               coordinate={{ latitude: detailer.latitude, longitude: detailer.longitude }}
               title={detailer.name}
               pinColor="blue"
-              onSelect={() => handleMarkerSelect(detailer)}
+              onPress={() => handleMarkerSelect(detailer)}
             >
               <Callout onPress={() => navigation.navigate("Detailer", { detailer, routeInfo })}>
                 <View style={styles.callout}>

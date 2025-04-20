@@ -53,7 +53,7 @@ export default function ManageServicesScreen({ navigation }) {
   const renderServiceItem = ({ item }) => (
     <View style={styles.serviceItem}>
       <Text style={styles.serviceText}>
-        {item.serviceName} - ${item.price.toFixed(2)}
+        {item.serviceName} - €{item.price.toFixed(2)}
       </Text>
       <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={styles.deleteButton}>
         <Text style={styles.deleteText}>Delete</Text>
