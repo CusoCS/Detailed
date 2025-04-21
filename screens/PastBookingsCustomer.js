@@ -1,48 +1,45 @@
-// screens/CustomerBookingsScreen.js
+// screens/PastBookingsCustomer.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
+  StyleSheet,
+  TouchableOpacity,
   Button,
 } from 'react-native';
 import { auth } from '../firebaseConfig';
 import {
-  getBookingsForCustomer,
+  getPastBookingsForCustomer,
   deleteBooking,
 } from '../booking/services';
 
-export default function CustomerBookingsScreen({ navigation }) {
+export default function PastBookingsCustomer({ navigation }) {
   const [bookings, setBookings] = useState([]);
-  const user = auth.currentUser;
+  const currentUser = auth.currentUser;
 
-  const load = async () => {
-    if (!user) return;
+  const fetchPast = async () => {
+    if (!currentUser) return;
     try {
-      const data = await getBookingsForCustomer(user.uid);
+      const data = await getPastBookingsForCustomer(currentUser.uid);
       setBookings(data);
     } catch (error) {
-      console.error('Error loading bookings:', error);
-      Alert.alert('Error', 'Could not load your bookings.');
+      Alert.alert('Error', 'Failed to fetch past bookings');
     }
   };
 
   useEffect(() => {
-    const unsub = navigation.addListener('focus', load);
+    const unsub = navigation.addListener('focus', fetchPast);
     return unsub;
-  }, [navigation, user]);
+  }, [navigation, currentUser]);
 
-  const handleCancel = async (id) => {
+  const handleDelete = async (id) => {
     try {
       await deleteBooking(id);
-      Alert.alert('Booking canceled');
-      load();
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      Alert.alert('Error', 'Could not cancel booking');
+      fetchPast();
+    } catch {
+      Alert.alert('Error', 'Could not delete booking');
     }
   };
 
@@ -57,48 +54,43 @@ export default function CustomerBookingsScreen({ navigation }) {
       </Text>
       <Text style={styles.text}>Status: {item.status}</Text>
       <TouchableOpacity
-        style={styles.cancelBtn}
+        style={styles.deleteBtn}
         onPress={() =>
           Alert.alert(
-            'Confirm',
-            'Cancel this booking?',
+            'Delete past booking?',
+            'This cannot be undone.',
             [
-              { text: 'No' },
-              { text: 'Yes', onPress: () => handleCancel(item.id) },
+              { text: 'Cancel' },
+              { text: 'Delete', onPress: () => handleDelete(item.id) },
             ]
           )
         }
       >
-        <Text style={styles.cancelText}>Cancel Booking</Text>
+        <Text style={styles.deleteText}>Delete</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Bookings</Text>
+      <Text style={styles.title}>My Past Bookings</Text>
       <FlatList
         data={bookings}
-        keyExtractor={b => b.id}
+        keyExtractor={(b) => b.id}
         renderItem={renderItem}
-        ListEmptyComponent={<Text>No bookings yet.</Text>}
+        ListEmptyComponent={<Text>No past bookings.</Text>}
       />
-
-      {/* NEW: Navigate to past bookings */}
       <Button
-        title="Past Bookings"
-        onPress={() => navigation.navigate('PastBookingsCustomer')}
+        title="Back to My Bookings"
+        onPress={() => navigation.goBack()}
       />
-
-      {/* Existing back button */}
-      <Button title="Back" onPress={() => navigation.goBack()} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   item: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -107,11 +99,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   text: { fontSize: 16, marginBottom: 4 },
-  cancelBtn: {
+  deleteBtn: {
     marginTop: 8,
     backgroundColor: '#e74c3c',
     padding: 8,
     borderRadius: 4,
   },
-  cancelText: { color: '#fff', textAlign: 'center' },
+  deleteText: { color: '#fff', textAlign: 'center' },
 });

@@ -1,36 +1,63 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ─── Node / JavaScript dependencies ───────────────────────────────────────────
 node_modules/
+**/node_modules/
 
-# Expo
+# ─── Expo / React Native caches & generated dirs ──────────────────────────────
 .expo/
+.expo-shared/
 dist/
+build/
 web-build/
-expo-env.d.ts
 
-# Native
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+# If you ever prebuild / eject:
+android/
+ios/
+Pods/
 
-# Metro
+# ─── Firebase functions ───────────────────────────────────────────────────────
+functions/node_modules/
+functions/.runtimeconfig.json
+functions/.env*
+# (if you compile TypeScript, ignore your output dirs too)
+functions/lib/
+functions/build/
+
+# ─── Environment files ────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Debug logs ───────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+expo-debug.log*
+metro-*.log
+
+# ─── Metro / bundler health checks ────────────────────────────────────────────
 .metro-health-check*
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
+# ─── TypeScript build cache ──────────────────────────────────────────────────
 *.tsbuildinfo
+
+# ─── Native key / provisioning files ──────────────────────────────────────────
+*.jks
+*.p12
+*.p8
+*.key
+*.pem
+*.mobileprovision
+
+# ─── IDE / editor folders ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ─── macOS / Windows OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Optional: test coverage ───────────────────────────────────────────────────
+coverage/

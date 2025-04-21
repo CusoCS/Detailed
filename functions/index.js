@@ -1,11 +1,19 @@
+// functions/index.js
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const { onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const express = require('express');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch').default;
+const admin = require('firebase-admin');
+
+admin.initializeApp();
 
 // Define your secret
 const GOOGLE_KEY = defineSecret('GOOGLE_KEY');
 
+//
+// HTTP endpoint for distance matrix
+//
 const app = express();
 app.use(express.json());
 
@@ -55,5 +63,27 @@ app.post('/', async (req, res) => {
   }
 });
 
-// Deploy this Cloud Function with the secret
 exports.getDistanceMatrix = onRequest({ secrets: [GOOGLE_KEY] }, app);
+
+//
+// Firestore trigger to free up slots when a booking is deleted
+//
+exports.onBookingDeleted = onDocumentDeleted(
+  'bookings/{bookingId}',
+  async (event) => {
+    const booking = event.data;
+    const slotId = booking.slotId;
+    if (!slotId) return;
+
+    const slotRef = admin.firestore().doc(`slots/${slotId}`);
+    try {
+      await slotRef.update({
+        booked: false,
+        bookedBy: admin.firestore.FieldValue.delete(),
+        bookedAt: admin.firestore.FieldValue.delete(),
+      });
+    } catch (err) {
+      console.error('Failed to free slot', slotId, err);
+    }
+  }
+);

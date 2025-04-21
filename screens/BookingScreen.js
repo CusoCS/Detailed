@@ -1,3 +1,4 @@
+// screens/BookingScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -22,6 +23,7 @@ export default function BookingScreen({ route, navigation }) {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [slots, setSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,7 +35,8 @@ export default function BookingScreen({ route, navigation }) {
     try {
       const data = await getServices(detailer.uid);
       setServices(data);
-    } catch {
+    } catch (err) {
+      console.error(err);
       Alert.alert('Error', 'Failed to load services');
     }
   };
@@ -42,35 +45,42 @@ export default function BookingScreen({ route, navigation }) {
     setLoading(true);
     try {
       const data = await getHourSlots(detailer.uid);
-      // only future & free
-      const free = data.filter((s) => {
+      const free = data.filter(s => {
         const start = s.startTime.toDate
           ? s.startTime.toDate()
           : new Date(s.startTime);
         return !s.booked && start > new Date();
       });
       setSlots(free);
-    } catch {
+      setSelectedSlot(null);
+    } catch (err) {
+      console.error(err);
       Alert.alert('Error', 'Failed to load slots');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBook = async (slot) => {
+  const handleBook = async () => {
     if (!selectedService) {
-      return Alert.alert('Please select a service first');
+      return Alert.alert('Please select a service');
     }
+    if (!selectedSlot) {
+      return Alert.alert('Please pick a slot');
+    }
+
     try {
       await bookSlot(
         currentUser.uid,
         detailer.uid,
-        slot.id,
+        selectedSlot.id,
         selectedService.serviceName
       );
-      Alert.alert('Success', 'Your slot is booked');
-      navigation.goBack();
+      Alert.alert('Success', 'Your slot is booked', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     } catch (err) {
+      console.error(err);
       Alert.alert('Error', err.message || 'Booking failed');
     }
   };
@@ -79,7 +89,7 @@ export default function BookingScreen({ route, navigation }) {
     <TouchableOpacity
       style={[
         styles.serviceItem,
-        selectedService?.id === item.id && styles.selected,
+        selectedService?.id === item.id && styles.selectedItem,
       ]}
       onPress={() => setSelectedService(item)}
     >
@@ -93,10 +103,14 @@ export default function BookingScreen({ route, navigation }) {
     const start = item.startTime.toDate
       ? item.startTime.toDate()
       : new Date(item.startTime);
+    const isSelected = selectedSlot?.id === item.id;
     return (
       <TouchableOpacity
-        style={styles.slotItem}
-        onPress={() => handleBook(item)}
+        style={[
+          styles.slotItem,
+          isSelected && styles.selectedItem,
+        ]}
+        onPress={() => setSelectedSlot(item)}
       >
         <Text>{start.toLocaleString()}</Text>
       </TouchableOpacity>
@@ -105,15 +119,18 @@ export default function BookingScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Book a Service at {detailer.name}</Text>
+      <Text style={styles.title}>
+        Book a Service at {detailer.name}
+      </Text>
 
       <Text style={styles.label}>1) Select a Service:</Text>
       <FlatList
         data={services}
-        keyExtractor={(i) => i.id}
+        keyExtractor={i => i.id}
         renderItem={renderService}
         horizontal
         ListEmptyComponent={<Text>No services.</Text>}
+        contentContainerStyle={{ paddingBottom: 10 }}
       />
 
       <Text style={styles.label}>2) Pick a Free Slot:</Text>
@@ -122,12 +139,21 @@ export default function BookingScreen({ route, navigation }) {
       ) : slots.length > 0 ? (
         <FlatList
           data={slots}
-          keyExtractor={(i) => i.id}
+          keyExtractor={i => i.id}
           renderItem={renderSlot}
         />
       ) : (
         <Text>No free slots available.</Text>
       )}
+
+      {/* Book Now button */}
+      <View style={styles.bookNowContainer}>
+        <Button
+          title="Book Now"
+          onPress={handleBook}
+          disabled={!selectedService || !selectedSlot}
+        />
+      </View>
 
       <View style={styles.buttons}>
         <Button title="Refresh Slots" onPress={fetchSlots} />
@@ -148,7 +174,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginRight: 10,
   },
-  selected: { backgroundColor: '#d3d3d3' },
   slotItem: {
     padding: 12,
     borderWidth: 1,
@@ -156,5 +181,13 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginBottom: 10,
   },
-  buttons: { marginTop: 20 },
+  selectedItem: {
+    backgroundColor: '#d3eaff',
+    borderColor: '#007aff',
+  },
+  bookNowContainer: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  buttons: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
 });

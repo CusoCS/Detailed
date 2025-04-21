@@ -1,6 +1,6 @@
 // screens/ManageBookingsScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Alert, StyleSheet, TouchableOpacity, Button } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { getBookingsForDetailer, updateBooking, deleteBooking } from '../booking/services';
 
@@ -44,16 +44,23 @@ export default function ManageBookingsScreen({ navigation }) {
   const renderBookingItem = ({ item }) => (
     <View style={styles.bookingItem}>
       <Text style={styles.bookingText}>Service: {item.service}</Text>
-      {/* If bookingTime is stored as a Firebase Timestamp, adjust accordingly */}
-      <Text style={styles.bookingText}>Time: {new Date(item.bookingTime.seconds * 1000).toLocaleString()}</Text>
+      <Text style={styles.bookingText}>
+        Time: {new Date(item.bookingTime.seconds * 1000).toLocaleString()}
+      </Text>
       <Text style={styles.bookingText}>Status: {item.status}</Text>
       <View style={styles.buttonsContainer}>
         {item.status !== 'confirmed' && (
-          <TouchableOpacity onPress={() => handleConfirmBooking(item.id)} style={styles.confirmButton}>
+          <TouchableOpacity
+            onPress={() => handleConfirmBooking(item.id)}
+            style={styles.confirmButton}
+          >
             <Text style={styles.buttonText}>Confirm</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={() => handleDeleteBooking(item.id)} style={styles.deleteButton}>
+        <TouchableOpacity
+          onPress={() => handleDeleteBooking(item.id)}
+          style={styles.deleteButton}
+        >
           <Text style={styles.buttonText}>Delete</Text>
         </TouchableOpacity>
       </View>
@@ -62,31 +69,46 @@ export default function ManageBookingsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Manage Bookings</Text>
+      <Text style={styles.title}>Manage Upcoming Bookings</Text>
       <FlatList
         data={bookings}
         keyExtractor={item => item.id}
         renderItem={renderBookingItem}
-        ListEmptyComponent={<Text>No bookings found.</Text>}
+        ListEmptyComponent={<Text>No upcoming bookings.</Text>}
       />
-      <Button title="Back to Dashboard" onPress={() => navigation.goBack()} />
+
+      <View style={styles.navButtons}>
+        <Button
+          title="Past Bookings"
+          onPress={() => navigation.navigate('PastBookingsDetailer')}
+        />
+        <Button
+          title="Back to Dashboard"
+          onPress={() => navigation.goBack()}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  bookingItem: { 
-    padding: 15, 
-    borderWidth: 1, 
-    borderColor: '#ccc', 
-    borderRadius: 5, 
-    marginBottom: 15 
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  bookingItem: {
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    marginBottom: 15
   },
   bookingText: { fontSize: 16, marginBottom: 5 },
   buttonsContainer: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
   confirmButton: { backgroundColor: 'green', padding: 10, borderRadius: 5 },
   deleteButton: { backgroundColor: 'red', padding: 10, borderRadius: 5 },
   buttonText: { color: '#fff', fontWeight: 'bold' },
+  navButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20
+  }
 });

@@ -10,6 +10,8 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
+  Timestamp
 } from 'firebase/firestore';
 
 /* =========================
@@ -27,7 +29,10 @@ export async function addService(detailerUid, serviceName, price) {
 }
 
 export async function getServices(detailerUid) {
-  const q = query(collection(db, 'services'), where('detailerId', '==', detailerUid));
+  const q = query(
+    collection(db, 'services'),
+    where('detailerId', '==', detailerUid)
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
@@ -40,31 +45,72 @@ export async function deleteService(serviceId) {
   await deleteDoc(doc(db, 'services', serviceId));
 }
 
-
 /* =========================
    BOOKINGS COLLECTION
    ========================= */
 
-export async function addBooking(customerId, detailerId, service, bookingTime, status = 'pending') {
+export async function addBooking(
+  customerId,
+  detailerId,
+  service,
+  bookingTime,
+  status = 'pending'
+) {
   const docRef = await addDoc(collection(db, 'bookings'), {
     customerId,
     detailerId,
     service,
     bookingTime,
     status,
-    createdAt: new Date(),
+    createdAt: Timestamp.now(),
   });
   return docRef.id;
 }
 
 export async function getBookingsForDetailer(detailerId) {
-  const q = query(collection(db, 'bookings'), where('detailerId', '==', detailerId));
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, 'bookings'),
+    where('detailerId', '==', detailerId),
+    where('bookingTime', '>=', now),
+    orderBy('bookingTime', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getPastBookingsForDetailer(detailerId) {
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, 'bookings'),
+    where('detailerId', '==', detailerId),
+    where('bookingTime', '<', now),
+    orderBy('bookingTime', 'desc')
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function getBookingsForCustomer(customerId) {
-  const q = query(collection(db, 'bookings'), where('customerId', '==', customerId));
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, 'bookings'),
+    where('customerId', '==', customerId),
+    where('bookingTime', '>=', now),
+    orderBy('bookingTime', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getPastBookingsForCustomer(customerId) {
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, 'bookings'),
+    where('customerId', '==', customerId),
+    where('bookingTime', '<', now),
+    orderBy('bookingTime', 'desc')
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
@@ -74,9 +120,9 @@ export async function updateBooking(bookingId, updateFields) {
 }
 
 export async function deleteBooking(bookingId) {
+  // simply delete the booking; slot freeing is now handled
   await deleteDoc(doc(db, 'bookings', bookingId));
 }
-
 
 /* =================================
    AVAILABILITY SLOTS COLLECTION
@@ -91,7 +137,7 @@ export async function addHourSlot(detailerId, startTime, endTime) {
     startTime,      // JS Date or timestamp
     endTime,        // JS Date or timestamp
     booked: false,
-    createdAt: new Date(),
+    createdAt: Timestamp.now(),
   });
   return docRef.id;
 }
@@ -115,7 +161,12 @@ export async function deleteHourSlot(slotId) {
  *  1) marks the slot as booked by customerId
  *  2) creates a booking record using slot.startTime
  */
-export async function bookSlot(customerId, detailerId, slotId, serviceName) {
+export async function bookSlot(
+  customerId,
+  detailerId,
+  slotId,
+  serviceName
+) {
   const slotRef = doc(db, 'slots', slotId);
   const slotSnap = await getDoc(slotRef);
   if (!slotSnap.exists()) {
@@ -125,12 +176,23 @@ export async function bookSlot(customerId, detailerId, slotId, serviceName) {
   if (slot.booked) {
     throw new Error('Slot already booked');
   }
+
   // mark slot as booked
   await updateDoc(slotRef, {
     booked: true,
     bookedBy: customerId,
-    bookedAt: new Date(),
+    bookedAt: Timestamp.now(),
   });
+
   // create booking record
-  return addBooking(customerId, detailerId, serviceName, slot.startTime);
+  return addDoc(collection(db, 'bookings'), {
+    customerId,
+    detailerId,
+    service: serviceName,
+    bookingTime: slot.startTime,
+    status: 'pending',
+    // retain slotId so CF can free it on delete
+    slotId,
+    createdAt: Timestamp.now(),
+  });
 }

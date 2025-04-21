@@ -18,11 +18,13 @@ import CustomerBookingsScreen from './screens/CustomerBookingsScreen';
 import ManageServicesScreen from './screens/ManageServicesScreen';
 import ManageBookingsScreen from './screens/ManageBookingsScreen';
 import BookingScreen from './screens/BookingScreen';
-import ManageAvailabilityScreen from './screens/ManageAvailabilityScreen';  // ← new
+import ManageAvailabilityScreen from './screens/ManageAvailabilityScreen';
 import { auth, db } from './firebaseConfig';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
+import PastBookingsDetailer from './screens/PastBookingsDetailer';
+import PastBookingsCustomer from './screens/PastBookingsCustomer';
 
 const Stack = createNativeStackNavigator();
 
@@ -121,6 +123,8 @@ export default function App() {
           <Stack.Screen name="Detailer" component={DetailerScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="PastBookingsDetailer" component={PastBookingsDetailer} />
+          <Stack.Screen name="PastBookingsCustomer" component={PastBookingsCustomer} />
           <Stack.Screen
             name="CustomerBookings"
             component={CustomerBookingsScreen}
