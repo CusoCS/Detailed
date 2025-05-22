@@ -9,11 +9,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import {
-  getServices,
-  getHourSlots,
-  bookSlot,
-} from '../booking/services';
+import { getServices, getHourSlots } from '../booking/services';
 import { auth } from '../firebaseConfig';
 
 export default function BookingScreen({ route, navigation }) {
@@ -31,7 +27,7 @@ export default function BookingScreen({ route, navigation }) {
     fetchSlots();
   }, []);
 
-  const fetchServices = async () => {
+  async function fetchServices() {
     try {
       const data = await getServices(detailer.uid);
       setServices(data);
@@ -39,9 +35,9 @@ export default function BookingScreen({ route, navigation }) {
       console.error(err);
       Alert.alert('Error', 'Failed to load services');
     }
-  };
+  }
 
-  const fetchSlots = async () => {
+  async function fetchSlots() {
     setLoading(true);
     try {
       const data = await getHourSlots(detailer.uid);
@@ -59,31 +55,21 @@ export default function BookingScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleBook = async () => {
+  function handleProceedToPayment() {
     if (!selectedService) {
       return Alert.alert('Please select a service');
     }
     if (!selectedSlot) {
       return Alert.alert('Please pick a slot');
     }
-
-    try {
-      await bookSlot(
-        currentUser.uid,
-        detailer.uid,
-        selectedSlot.id,
-        selectedService.serviceName
-      );
-      Alert.alert('Success', 'Your slot is booked', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', err.message || 'Booking failed');
-    }
-  };
+    navigation.navigate('Checkout', {
+      detailer,
+      selectedService,
+      selectedSlot,
+    });
+  }
 
   const renderService = ({ item }) => (
     <TouchableOpacity
@@ -106,10 +92,7 @@ export default function BookingScreen({ route, navigation }) {
     const isSelected = selectedSlot?.id === item.id;
     return (
       <TouchableOpacity
-        style={[
-          styles.slotItem,
-          isSelected && styles.selectedItem,
-        ]}
+        style={[styles.slotItem, isSelected && styles.selectedItem]}
         onPress={() => setSelectedSlot(item)}
       >
         <Text>{start.toLocaleString()}</Text>
@@ -126,7 +109,7 @@ export default function BookingScreen({ route, navigation }) {
       <Text style={styles.label}>1) Select a Service:</Text>
       <FlatList
         data={services}
-        keyExtractor={i => i.id}
+        keyExtractor={item => item.id}
         renderItem={renderService}
         horizontal
         ListEmptyComponent={<Text>No services.</Text>}
@@ -139,18 +122,17 @@ export default function BookingScreen({ route, navigation }) {
       ) : slots.length > 0 ? (
         <FlatList
           data={slots}
-          keyExtractor={i => i.id}
+          keyExtractor={item => item.id}
           renderItem={renderSlot}
         />
       ) : (
         <Text>No free slots available.</Text>
       )}
 
-      {/* Book Now button */}
       <View style={styles.bookNowContainer}>
         <Button
-          title="Book Now"
-          onPress={handleBook}
+          title="Proceed to Payment"
+          onPress={handleProceedToPayment}
           disabled={!selectedService || !selectedSlot}
         />
       </View>
@@ -189,5 +171,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  buttons: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
+  buttons: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 });

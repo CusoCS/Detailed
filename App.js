@@ -1,15 +1,10 @@
+// App.js
 import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  View,
-  Image,
-  Button,
-  Text,
-  Alert,
-  StatusBar,
-} from 'react-native';
+import { StyleSheet, View, Image, Button, Text, Alert, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StripeProvider } from '@stripe/stripe-react-native';
+
 import MapScreen from './screens/MapScreen';
 import DetailerScreen from './screens/DetailerScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -17,14 +12,17 @@ import SignUpScreen from './screens/SignUpScreen';
 import CustomerBookingsScreen from './screens/CustomerBookingsScreen';
 import ManageServicesScreen from './screens/ManageServicesScreen';
 import ManageBookingsScreen from './screens/ManageBookingsScreen';
-import BookingScreen from './screens/BookingScreen';
 import ManageAvailabilityScreen from './screens/ManageAvailabilityScreen';
+import BookingScreen from './screens/BookingScreen';
+import CheckoutScreen from './screens/CheckoutScreen';
+import PastBookingsDetailer from './screens/PastBookingsDetailer';
+import PastBookingsCustomer from './screens/PastBookingsCustomer';
+
 import { auth, db } from './firebaseConfig';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+
 import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
-import PastBookingsDetailer from './screens/PastBookingsDetailer';
-import PastBookingsCustomer from './screens/PastBookingsCustomer';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,28 +36,28 @@ function HomeScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return setIsDetailer(false);
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        setIsDetailer(snap.exists() && snap.data().role === 'detailer');
-      } catch {
-        setIsDetailer(false);
-      }
-    })();
+    if (!user) {
+      setIsDetailer(false);
+    } else {
+      (async () => {
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          setIsDetailer(snap.exists() && snap.data().role === 'detailer');
+        } catch {
+          setIsDetailer(false);
+        }
+      })();
+    }
   }, [user]);
 
-  const logout = () =>
+  const handleLogout = () =>
     signOut(auth)
       .then(() => Alert.alert('Logged out successfully!'))
-      .catch((e) => Alert.alert('Error', e.message));
+      .catch((e) => Alert.alert('Error logging out', e.message));
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('./assets/wiper.jpg')}
-        style={styles.logo}
-      />
+      <Image source={require('./assets/wiper.jpg')} style={styles.logo} />
       <Text style={styles.subtitle}>
         {isDetailer ? 'Welcome back, Detailer' : '"AutoBook" Coming soon...'}
       </Text>
@@ -102,7 +100,7 @@ function HomeScreen({ navigation }) {
 
       <View style={styles.btn}>
         {user ? (
-          <Button title="Log Out" onPress={logout} />
+          <Button title="Log Out" onPress={handleLogout} />
         ) : (
           <Button title="Log In" onPress={() => navigation.navigate('Login')} />
         )}
@@ -115,38 +113,41 @@ function HomeScreen({ navigation }) {
 
 export default function App() {
   return (
-    <KeyboardDismissWrapper style={{ flex: 1 }}>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Home">
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Map" component={MapScreen} />
-          <Stack.Screen name="Detailer" component={DetailerScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="PastBookingsDetailer" component={PastBookingsDetailer} />
-          <Stack.Screen name="PastBookingsCustomer" component={PastBookingsCustomer} />
-          <Stack.Screen
-            name="CustomerBookings"
-            component={CustomerBookingsScreen}
-            options={{ title: 'My Bookings' }}
-          />
-          <Stack.Screen
-            name="ManageServices"
-            component={ManageServicesScreen}
-          />
-          <Stack.Screen
-            name="ManageBookings"
-            component={ManageBookingsScreen}
-          />
-          <Stack.Screen
-            name="ManageAvailability"                      // ← new
-            component={ManageAvailabilityScreen}
-            options={{ title: 'Manage Availability' }}
-          />
-          <Stack.Screen name="BookService" component={BookingScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </KeyboardDismissWrapper>
+    <StripeProvider publishableKey="pk_test_51RRG2dPxA2pYyqKy2ztpBwaYQThP3lqt8iw1yAWLmlSvGWMr8DxVMBgGTynOSNXbK4uQEEq0wNZFgX8vjqvu0Ibt00DSS8gvfm">
+      <KeyboardDismissWrapper style={{ flex: 1 }}>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="Home">
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Map" component={MapScreen} />
+            <Stack.Screen name="Detailer" component={DetailerScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="PastBookingsDetailer" component={PastBookingsDetailer} />
+            <Stack.Screen name="PastBookingsCustomer" component={PastBookingsCustomer} />
+            <Stack.Screen
+              name="CustomerBookings"
+              component={CustomerBookingsScreen}
+              options={{ title: 'My Bookings' }}
+            />
+            <Stack.Screen
+              name="ManageServices"
+              component={ManageServicesScreen}
+            />
+            <Stack.Screen
+              name="ManageBookings"
+              component={ManageBookingsScreen}
+            />
+            <Stack.Screen
+              name="ManageAvailability"
+              component={ManageAvailabilityScreen}
+              options={{ title: 'Manage Availability' }}
+            />
+            <Stack.Screen name="BookService" component={BookingScreen} />
+            <Stack.Screen name="Checkout" component={CheckoutScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </KeyboardDismissWrapper>
+    </StripeProvider>
   );
 }
 
@@ -163,6 +164,12 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginBottom: 20,
   },
-  subtitle: { fontSize: 18, marginBottom: 20 },
-  btn: { width: 200, marginVertical: 6 },
+  subtitle: {
+    fontSize: 18,
+    marginBottom: 20,
+  },
+  btn: {
+    width: 200,
+    marginVertical: 6,
+  },
 });

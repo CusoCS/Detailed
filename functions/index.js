@@ -6,20 +6,20 @@ const express = require('express');
 const fetch = require('node-fetch').default;
 const admin = require('firebase-admin');
 
+// Initialize the default Firebase app
 admin.initializeApp();
 
-// Define your secret
+// ——— Secrets ———
+// Define your Google Maps key and Stripe secret as Firebase Function params:
 const GOOGLE_KEY = defineSecret('GOOGLE_KEY');
+const STRIPE_SECRET = defineSecret('STRIPE_SECRET');
 
-//
-// HTTP endpoint for distance matrix
-//
-const app = express();
-app.use(express.json());
+// ——— 1) Distance Matrix HTTP function ———
+const mapsApp = express();
+mapsApp.use(express.json());
 
-app.post('/', async (req, res) => {
+mapsApp.post('/', async (req, res) => {
   const { origin, dest } = req.body;
-
   if (
     !origin ||
     !dest ||
@@ -43,7 +43,6 @@ app.post('/', async (req, res) => {
   try {
     const gRes = await fetch(url);
     const data = await gRes.json();
-
     if (data.status !== 'OK' || !data.rows?.[0]?.elements?.[0]) {
       return res.status(502).json({ error: 'Google DM error', details: data });
     }
@@ -63,11 +62,55 @@ app.post('/', async (req, res) => {
   }
 });
 
-exports.getDistanceMatrix = onRequest({ secrets: [GOOGLE_KEY] }, app);
+exports.getDistanceMatrix = onRequest(
+  { secrets: [GOOGLE_KEY] },
+  mapsApp
+);
 
-//
-// Firestore trigger to free up slots when a booking is deleted
-//
+// ——— 2) Stripe PaymentIntent HTTP function ———
+const stripeApp = express();
+stripeApp.use(express.json());
+
+// Lazily initialize Stripe with the secret key at runtime
+let stripe;
+stripeApp.use((req, res, next) => {
+  if (!stripe) {
+    const secret = process.env.STRIPE_SECRET;
+    stripe = require('stripe')(secret);
+  }
+  next();
+});
+
+/**
+ * POST /createPaymentIntent
+ * Body: { amount: number (in cents), currency?: string, metadata?: object }
+ * Returns: { clientSecret }
+ */
+stripeApp.post('/', async (req, res) => {
+  const { amount, currency = 'usd', metadata = {} } = req.body;
+  if (typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid amount' });
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      metadata
+    });
+    return res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error('Stripe error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+exports.createPaymentIntent = onRequest(
+  { secrets: [STRIPE_SECRET] },
+  stripeApp
+);
+
+// ——— 3) Firestore trigger: free up slots on booking deletion ———
 exports.onBookingDeleted = onDocumentDeleted(
   'bookings/{bookingId}',
   async (event) => {
