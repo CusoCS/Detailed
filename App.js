@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Image, Button, Text, Alert, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -23,6 +22,8 @@ import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 import KeyboardDismissWrapper from './screens/KeyboardDismissWrapper';
+import * as Linking from 'expo-linking';
+import { onboardDetailer } from './booking/services'; // <-- Make sure this path is correct
 
 const Stack = createNativeStackNavigator();
 
@@ -54,6 +55,15 @@ function HomeScreen({ navigation }) {
     signOut(auth)
       .then(() => Alert.alert('Logged out successfully!'))
       .catch((e) => Alert.alert('Error logging out', e.message));
+
+  const handleGetPaid = async () => {
+    try {
+      const url = await onboardDetailer(user.uid);
+      Linking.openURL(url);
+    } catch (err) {
+      Alert.alert('Onboarding Error', err.message);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -95,6 +105,9 @@ function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate('ManageAvailability')}
             />
           </View>
+          <View style={styles.btn}>
+            <Button title="Get Paid" onPress={handleGetPaid} />
+          </View>
         </>
       )}
 
@@ -129,14 +142,8 @@ export default function App() {
               component={CustomerBookingsScreen}
               options={{ title: 'My Bookings' }}
             />
-            <Stack.Screen
-              name="ManageServices"
-              component={ManageServicesScreen}
-            />
-            <Stack.Screen
-              name="ManageBookings"
-              component={ManageBookingsScreen}
-            />
+            <Stack.Screen name="ManageServices" component={ManageServicesScreen} />
+            <Stack.Screen name="ManageBookings" component={ManageBookingsScreen} />
             <Stack.Screen
               name="ManageAvailability"
               component={ManageAvailabilityScreen}

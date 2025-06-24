@@ -11,5 +11,23 @@
         "*.local"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/onboard/refresh",
+        "destination": "/refresh.html"
+      },
+      {
+        "source": "/onboard/complete",
+        "destination": "/complete.html"
+      }
+    ]
+  }
 }

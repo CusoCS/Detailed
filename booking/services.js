@@ -196,3 +196,26 @@ export async function bookSlot(
     createdAt: Timestamp.now(),
   });
 }
+
+// ——— STRIPE ONBOARDING ———
+export async function onboardDetailer(detailerId) {
+  const userDoc = await getDoc(doc(db, 'users', detailerId));
+  if (!userDoc.exists()) {
+    throw new Error('User not found');
+  }
+
+  const email = userDoc.data().email;
+
+  const response = await fetch('https://us-central1-autobook-8085d.cloudfunctions.net/onboardDetailer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ detailerId, email }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Onboarding failed');
+  }
+
+  return data.url; // Stripe onboarding link
+}

@@ -6,13 +6,21 @@ const express = require('express');
 const fetch = require('node-fetch').default;
 const admin = require('firebase-admin');
 
-// Initialize the default Firebase app
+// Initialize Firebase
 admin.initializeApp();
 
 // ——— Secrets ———
-// Define your Google Maps key and Stripe secret as Firebase Function params:
 const GOOGLE_KEY = defineSecret('GOOGLE_KEY');
 const STRIPE_SECRET = defineSecret('STRIPE_SECRET');
+
+// Helper to lazily initialize Stripe
+let stripe;
+function getStripe() {
+  if (!stripe) {
+    stripe = require('stripe')(process.env.STRIPE_SECRET);
+  }
+  return stripe;
+}
 
 // ——— 1) Distance Matrix HTTP function ———
 const mapsApp = express();
@@ -67,17 +75,61 @@ exports.getDistanceMatrix = onRequest(
   mapsApp
 );
 
+// ——— 2a) Detailer onboarding HTTP function ———
+const onboardApp = express();
+onboardApp.use(express.json());
+
+onboardApp.post('/', async (req, res) => {
+  const { detailerId, email, country = 'IE' } = req.body;
+  if (!detailerId || !email) {
+    return res.status(400).json({ error: 'Missing detailerId or email' });
+  }
+
+  try {
+    const stripeClient = getStripe();
+    // 1) Create a Connect Account for the detailer
+    const account = await stripeClient.accounts.create({
+      type: 'express',
+      country,
+      email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers:     { requested: true },
+      },
+    });
+
+    // 2) Save the account ID to Firestore
+    await admin.firestore()
+      .doc(`detailers/${detailerId}`)
+      .set({ stripeAccountId: account.id }, { merge: true });
+
+    // 3) Create an account link for onboarding
+    const link = await stripeClient.accountLinks.create({
+      account: account.id,
+      refresh_url: 'https://autobook-8085d.web.app/onboard/refresh',
+      return_url: 'https://autobook-8085d.web.app/onboard/complete',
+      type: 'account_onboarding',
+    });
+
+    return res.json({ url: link.url });
+  } catch (err) {
+    console.error('Onboarding error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+exports.onboardDetailer = onRequest(
+  { secrets: [STRIPE_SECRET] },
+  onboardApp
+);
+
 // ——— 2) Stripe PaymentIntent HTTP function ———
 const stripeApp = express();
 stripeApp.use(express.json());
 
-// Lazily initialize Stripe with the secret key at runtime
-let stripe;
 stripeApp.use((req, res, next) => {
-  if (!stripe) {
-    const secret = process.env.STRIPE_SECRET;
-    stripe = require('stripe')(secret);
-  }
+  // Ensure stripe is initialized
+  getStripe();
   next();
 });
 
@@ -87,17 +139,32 @@ stripeApp.use((req, res, next) => {
  * Returns: { clientSecret }
  */
 stripeApp.post('/', async (req, res) => {
-  const { amount, currency = 'usd', metadata = {} } = req.body;
+  const { amount, currency = 'eur', metadata = {} } = req.body;
   if (typeof amount !== 'number' || amount <= 0) {
     return res.status(400).json({ error: 'Invalid amount' });
   }
 
   try {
+    // Look up detailer's connected account ID from metadata
+    const detailerId = metadata.detailerId;
+    const detailerSnap = await admin.firestore().doc(`detailers/${detailerId}`).get();
+    const stripeAccountId = detailerSnap.get('stripeAccountId');
+    if (!stripeAccountId) {
+      return res.status(400).json({ error: 'Detailer not onboarded with Stripe' });
+    }
+
+    // Create a PaymentIntent that routes funds to the detailer
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
-      metadata
+      metadata,
+      on_behalf_of: stripeAccountId,
+      transfer_data: {
+        destination: stripeAccountId,
+      },
+      application_fee_amount: Math.round(amount * 0.025), // optional 2.5% fee
     });
+
     return res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
     console.error('Stripe error:', err);

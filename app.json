@@ -2,6 +2,7 @@
   "expo": {
     "name": "detailed",
     "slug": "detailed",
+    "scheme": "detailed",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
