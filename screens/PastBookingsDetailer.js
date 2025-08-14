@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   Button,
 } from 'react-native';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   getPastBookingsForDetailer,
   deleteBooking,
@@ -23,7 +24,21 @@ export default function PastBookingsDetailer({ navigation }) {
     if (!currentUser) return;
     try {
       const data = await getPastBookingsForDetailer(currentUser.uid);
-      setBookings(data);
+      // Fetch customer name for each booking
+      const bookingsWithCustomerNames = await Promise.all(
+        data.map(async (booking) => {
+          const userDocRef = doc(db, 'users', booking.customerId);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const customerName = `${userData.firstName} ${userData.lastName}`;
+            return { ...booking, customerName };
+          } else {
+            return { ...booking, customerName: 'Customer not found' };
+          }
+        })
+      );
+      setBookings(bookingsWithCustomerNames);
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch past bookings');
     }
@@ -45,6 +60,8 @@ export default function PastBookingsDetailer({ navigation }) {
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
+      {/* Display the customer's name */}
+      <Text style={styles.customerName}>Customer: {item.customerName}</Text>
       <Text style={styles.text}>Service: {item.service}</Text>
       <Text style={styles.text}>
         Time:{' '}
@@ -97,6 +114,12 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     borderRadius: 6,
+  },
+  customerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
   },
   text: { fontSize: 16, marginBottom: 4 },
   deleteBtn: {

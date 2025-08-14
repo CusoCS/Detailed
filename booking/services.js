@@ -13,6 +13,7 @@ import {
   orderBy,
   Timestamp
 } from 'firebase/firestore';
+import * as Notifications from 'expo-notifications';
 
 /* =========================
    SERVICES COLLECTION
@@ -158,8 +159,8 @@ export async function deleteHourSlot(slotId) {
 
 /**
  * bookSlot
- *  1) marks the slot as booked by customerId
- *  2) creates a booking record using slot.startTime
+ * 1) marks the slot as booked by customerId
+ * 2) creates a booking record using slot.startTime
  */
 export async function bookSlot(
   customerId,
@@ -218,4 +219,52 @@ export async function onboardDetailer(detailerId) {
   }
 
   return data.url; // Stripe onboarding link
+}
+
+/* =========================
+   PUSH NOTIFICATIONS
+   ========================= */
+
+// Configure notification behavior when the app is in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+export async function registerForPushNotificationsAsync(userId) {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  // Ask for permission if not already granted
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  // Exit if permission is not granted
+  if (finalStatus !== 'granted') {
+    console.log('Permission to receive push notifications was denied.');
+    return;
+  }
+
+  try {
+    // Get the Expo Push Token
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const pushToken = tokenData.data;
+
+    if (pushToken && userId) {
+      // Save the push token to the user's document in Firestore
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, { pushToken: pushToken });
+      console.log('Push token saved successfully for user:', userId);
+    }
+    
+    return pushToken;
+
+  } catch (error) {
+    console.error('Error getting or saving push token:', error);
+  }
 }

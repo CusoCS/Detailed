@@ -1,5 +1,5 @@
 // screens/CustomerBookingsScreen.js
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   Alert,
   Button,
 } from 'react-native';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   getBookingsForCustomer,
   deleteBooking,
@@ -23,7 +24,23 @@ export default function CustomerBookingsScreen({ navigation }) {
     if (!user) return;
     try {
       const data = await getBookingsForCustomer(user.uid);
-      setBookings(data);
+      // enrich with detailer name
+      const enriched = await Promise.all(
+        data.map(async (b) => {
+          try {
+            const ref = doc(db, 'users', b.detailerId);
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+              const u = snap.data();
+              return { ...b, detailerName: `${u.firstName} ${u.lastName}` };
+            }
+            return { ...b, detailerName: 'Detailer not found' };
+          } catch (e) {
+            return { ...b, detailerName: 'Error loading detailer' };
+          }
+        })
+      );
+      setBookings(enriched);
     } catch (error) {
       console.error('Error loading bookings:', error);
       Alert.alert('Error', 'Could not load your bookings.');
@@ -48,6 +65,7 @@ export default function CustomerBookingsScreen({ navigation }) {
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
+      <Text style={styles.detailerName}>Detailer: {item.detailerName}</Text>
       <Text style={styles.text}>Service: {item.service}</Text>
       <Text style={styles.text}>
         Time:{' '}
@@ -107,6 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   text: { fontSize: 16, marginBottom: 4 },
+  detailerName: { fontSize: 18, fontWeight: 'bold', marginBottom: 4, color: '#333' },
   cancelBtn: {
     marginTop: 8,
     backgroundColor: '#e74c3c',

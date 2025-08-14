@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   Button,
 } from 'react-native';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   getPastBookingsForCustomer,
   deleteBooking,
@@ -23,7 +24,23 @@ export default function PastBookingsCustomer({ navigation }) {
     if (!currentUser) return;
     try {
       const data = await getPastBookingsForCustomer(currentUser.uid);
-      setBookings(data);
+      // augment each booking with the detailer's name
+      const withDetailerNames = await Promise.all(
+        data.map(async (booking) => {
+          const detailerRef = doc(db, 'users', booking.detailerId);
+            try {
+              const snap = await getDoc(detailerRef);
+              if (snap.exists()) {
+                const u = snap.data();
+                return { ...booking, detailerName: `${u.firstName} ${u.lastName}` };
+              }
+              return { ...booking, detailerName: 'Detailer not found' };
+            } catch {
+              return { ...booking, detailerName: 'Error loading detailer' };
+            }
+        })
+      );
+      setBookings(withDetailerNames);
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch past bookings');
     }
@@ -45,6 +62,7 @@ export default function PastBookingsCustomer({ navigation }) {
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
+      <Text style={styles.detailerName}>Detailer: {item.detailerName}</Text>
       <Text style={styles.text}>Service: {item.service}</Text>
       <Text style={styles.text}>
         Time:{' '}
@@ -99,6 +117,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   text: { fontSize: 16, marginBottom: 4 },
+  detailerName: { fontSize: 18, fontWeight: 'bold', marginBottom: 4, color: '#333' },
   deleteBtn: {
     marginTop: 8,
     backgroundColor: '#e74c3c',

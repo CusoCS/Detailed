@@ -23,13 +23,21 @@ export default function BookingScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Support both detailer.uid and detailer.id (MapScreen now aliases uid)
+    if (!detailer) return;
+    if (!detailer.uid && !detailer.id) {
+      console.warn('BookingScreen: detailer object missing uid/id', detailer);
+      return;
+    }
     fetchServices();
     fetchSlots();
-  }, []);
+  }, [detailer]);
 
   async function fetchServices() {
     try {
-      const data = await getServices(detailer.uid);
+    const detailerIdForQuery = detailer.uid || detailer.id;
+    if (!detailerIdForQuery) throw new Error('No detailer id provided');
+    const data = await getServices(detailerIdForQuery);
       setServices(data);
     } catch (err) {
       console.error(err);
@@ -40,7 +48,9 @@ export default function BookingScreen({ route, navigation }) {
   async function fetchSlots() {
     setLoading(true);
     try {
-      const data = await getHourSlots(detailer.uid);
+    const detailerIdForQuery = detailer.uid || detailer.id;
+    if (!detailerIdForQuery) throw new Error('No detailer id provided');
+    const data = await getHourSlots(detailerIdForQuery);
       const free = data.filter(s => {
         const start = s.startTime.toDate
           ? s.startTime.toDate()

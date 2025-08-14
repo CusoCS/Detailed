@@ -1,10 +1,22 @@
 // screens/ManageBookingsScreen.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Alert, StyleSheet, TouchableOpacity, Button } from 'react-native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
+  Button,
+} from "react-native";
 // MODIFIED: Import db and Firestore functions to fetch user data
-import { auth, db } from '../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
-import { getBookingsForDetailer, updateBooking, deleteBooking } from '../booking/services';
+import { auth, db } from "../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import {
+  getBookingsForDetailer,
+  updateBooking,
+  deleteBooking,
+} from "../booking/services";
 
 export default function ManageBookingsScreen({ navigation }) {
   const [bookings, setBookings] = useState([]);
@@ -20,7 +32,7 @@ export default function ManageBookingsScreen({ navigation }) {
         const bookingsWithCustomerNames = await Promise.all(
           bookingData.map(async (booking) => {
             // Assumes the user ID is stored in the booking document as 'userId'
-            const userDocRef = doc(db, 'users', booking.userId);
+            const userDocRef = doc(db, "users", booking.customerId);
             const userDocSnap = await getDoc(userDocRef);
 
             if (userDocSnap.exists()) {
@@ -28,7 +40,7 @@ export default function ManageBookingsScreen({ navigation }) {
               const customerName = `${userData.firstName} ${userData.lastName}`;
               return { ...booking, customerName }; // Add customerName to the booking object
             } else {
-              return { ...booking, customerName: 'Customer not found' }; // Fallback
+              return { ...booking, customerName: "Customer not found" }; // Fallback
             }
           })
         );
@@ -43,8 +55,8 @@ export default function ManageBookingsScreen({ navigation }) {
 
   useEffect(() => {
     // Re-fetch bookings when the screen comes into focus
-    const unsubscribe = navigation.addListener('focus', () => {
-        fetchBookings();
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchBookings();
     });
 
     return unsubscribe;
@@ -52,7 +64,7 @@ export default function ManageBookingsScreen({ navigation }) {
 
   const handleConfirmBooking = async (bookingId) => {
     try {
-      await updateBooking(bookingId, { status: 'confirmed' });
+      await updateBooking(bookingId, { status: "confirmed" });
       fetchBookings();
     } catch (error) {
       Alert.alert("Error", "Failed to update booking status");
@@ -78,7 +90,7 @@ export default function ManageBookingsScreen({ navigation }) {
       </Text>
       <Text style={styles.bookingText}>Status: {item.status}</Text>
       <View style={styles.buttonsContainer}>
-        {item.status !== 'confirmed' && (
+        {item.status !== "confirmed" && (
           <TouchableOpacity
             onPress={() => handleConfirmBooking(item.id)}
             style={styles.confirmButton}
@@ -101,19 +113,18 @@ export default function ManageBookingsScreen({ navigation }) {
       <Text style={styles.title}>Manage Upcoming Bookings</Text>
       <FlatList
         data={bookings}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={renderBookingItem}
-        ListEmptyComponent={<Text style={styles.emptyText}>No upcoming bookings.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No upcoming bookings.</Text>
+        }
       />
       <View style={styles.navButtons}>
         <Button
           title="Past Bookings"
-          onPress={() => navigation.navigate('PastBookingsDetailer')}
+          onPress={() => navigation.navigate("PastBookingsDetailer")}
         />
-        <Button
-          title="Back to Dashboard"
-          onPress={() => navigation.goBack()}
-        />
+        <Button title="Back to Dashboard" onPress={() => navigation.goBack()} />
       </View>
     </View>
   );
@@ -121,39 +132,64 @@ export default function ManageBookingsScreen({ navigation }) {
 
 // MODIFIED: Added styles for customer name and empty list message
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f7f7f7' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  container: { flex: 1, padding: 20, backgroundColor: "#f7f7f7" },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
   bookingItem: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 8,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.22,
     shadowRadius: 2.22,
     elevation: 3,
   },
-  customerName: { fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: '#333' },
-  bookingText: { fontSize: 16, marginBottom: 5, color: '#555' },
-  buttonsContainer: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 },
-  confirmButton: { backgroundColor: '#28a745', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 5 },
-  deleteButton: { backgroundColor: '#dc3545', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 5 },
-  buttonText: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
+  customerName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#333",
+  },
+  bookingText: { fontSize: 16, marginBottom: 5, color: "#555" },
+  buttonsContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 10,
+  },
+  confirmButton: {
+    backgroundColor: "#28a745",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  deleteButton: {
+    backgroundColor: "#dc3545",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  buttonText: { color: "#fff", fontWeight: "bold", textAlign: "center" },
   navButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
     paddingTop: 10,
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
     fontSize: 16,
-    color: '#888'
-  }
+    color: "#888",
+  },
 });

@@ -1,23 +1,25 @@
 // functions/index.js
-const { onRequest } = require('firebase-functions/v2/https');
-const { defineSecret } = require('firebase-functions/params');
-const { onDocumentDeleted } = require('firebase-functions/v2/firestore');
-const express = require('express');
-const fetch = require('node-fetch').default;
-const admin = require('firebase-admin');
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
+// MODIFIED: Imported more Firestore trigger types
+const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
+const express = require("express");
+const fetch = require("node-fetch").default;
+const admin = require("firebase-admin");
 
 // Initialize Firebase
 admin.initializeApp();
+const db = admin.firestore();
 
 // ——— Secrets ———
-const GOOGLE_KEY = defineSecret('GOOGLE_KEY');
-const STRIPE_SECRET = defineSecret('STRIPE_SECRET');
+const GOOGLE_KEY = defineSecret("GOOGLE_KEY");
+const STRIPE_SECRET = defineSecret("STRIPE_SECRET");
 
 // Helper to lazily initialize Stripe
 let stripe;
 function getStripe() {
   if (!stripe) {
-    stripe = require('stripe')(process.env.STRIPE_SECRET);
+    stripe = require("stripe")(process.env.STRIPE_SECRET);
   }
   return stripe;
 }
@@ -123,7 +125,7 @@ exports.onboardDetailer = onRequest(
   onboardApp
 );
 
-// ——— 2) Stripe PaymentIntent HTTP function ———
+// ——— 2b) Stripe PaymentIntent HTTP function ———
 const stripeApp = express();
 stripeApp.use(express.json());
 
@@ -133,11 +135,6 @@ stripeApp.use((req, res, next) => {
   next();
 });
 
-/**
- * POST /createPaymentIntent
- * Body: { amount: number (in cents), currency?: string, metadata?: object }
- * Returns: { clientSecret }
- */
 stripeApp.post('/', async (req, res) => {
   const { amount, currency = 'eur', metadata = {} } = req.body;
   if (typeof amount !== 'number' || amount <= 0) {
@@ -181,7 +178,8 @@ exports.createPaymentIntent = onRequest(
 exports.onBookingDeleted = onDocumentDeleted(
   'bookings/{bookingId}',
   async (event) => {
-    const booking = event.data;
+    // MODIFIED: Access data correctly in v2 functions
+    const booking = event.data.data();
     const slotId = booking.slotId;
     if (!slotId) return;
 
@@ -192,8 +190,111 @@ exports.onBookingDeleted = onDocumentDeleted(
         bookedBy: admin.firestore.FieldValue.delete(),
         bookedAt: admin.firestore.FieldValue.delete(),
       });
+      console.log(`Successfully freed slot ${slotId}.`);
     } catch (err) {
       console.error('Failed to free slot', slotId, err);
     }
   }
 );
+
+
+// ======================================================================
+// =================== NEW: NOTIFICATION FUNCTIONS ======================
+// ======================================================================
+
+/**
+ * A helper function to send push notifications via Expo's API.
+ * @param {string} pushToken The recipient's Expo Push Token.
+ * @param {string} title The title of the notification.
+ * @param {string} body The body text of the notification.
+ */
+async function sendPushNotification(pushToken, title, body) {
+  if (!pushToken) {
+    console.log("Cannot send notification, no push token available.");
+    return;
+  }
+
+  const message = {
+    to: pushToken,
+    sound: "default",
+    title: title,
+    body: body,
+  };
+
+  try {
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+    console.log("Successfully sent push notification.");
+  } catch (error) {
+    console.error("Error sending push notification:", error);
+  }
+}
+
+// 4a) Notify detailer when a new booking is created
+exports.notifyOnNewBooking = onDocumentCreated("bookings/{bookingId}", async (event) => {
+  const booking = event.data.data();
+  const detailerId = booking.detailerId;
+
+  const userDoc = await db.collection("users").doc(detailerId).get();
+  if (!userDoc.exists) {
+    console.error(`Detailer user document not found for ID: ${detailerId}`);
+    return;
+  }
+  const pushToken = userDoc.data().pushToken;
+
+  await sendPushNotification(
+    pushToken,
+    "New Booking Request!",
+    `You have a new booking for ${booking.service}.`
+  );
+});
+
+// 4b) Notify customer on booking status update (e.g., confirmed)
+exports.notifyOnBookingUpdate = onDocumentUpdated("bookings/{bookingId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  // Check if the status changed specifically to 'confirmed'
+  if (before.status !== "confirmed" && after.status === "confirmed") {
+    const userId = after.customerId; // Assuming the customer's ID is stored as customerId
+
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      console.error(`Customer user document not found for ID: ${userId}`);
+      return;
+    }
+    const pushToken = userDoc.data().pushToken;
+
+    await sendPushNotification(
+      pushToken,
+      "Booking Confirmed!",
+      `Your booking for ${after.service} has been confirmed.`
+    );
+  }
+});
+
+// 4c) Notify customer when a booking is deleted (cancelled)
+exports.notifyOnBookingDelete = onDocumentDeleted("bookings/{bookingId}", async (event) => {
+  const booking = event.data.data();
+  const userId = booking.customerId; // Assuming the customer's ID is stored as customerId
+
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) {
+    console.error(`Customer user document not found for ID: ${userId}`);
+    return;
+  }
+  const pushToken = userDoc.data().pushToken;
+
+  await sendPushNotification(
+    pushToken,
+    "Booking Cancelled",
+    `Your booking for ${booking.service} has been cancelled by the detailer.`
+  );
+});
